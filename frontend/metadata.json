@@ -1,0 +1,6 @@
+{
+  "name": "AstraQ Research Agent",
+  "description": "An AI-native business research agent that generates research plans, crawls/extracts text, computes TF-IDF and cosine similarity, groups themes, and scores opportunities to deliver structured recommendations.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
