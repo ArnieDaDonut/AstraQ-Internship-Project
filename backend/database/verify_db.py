@@ -7,6 +7,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 
 from backend.database.connection import engine, Base, SessionLocal
 from backend.models.schemas import (
+    User,
     ResearchProject,
     ResearchPlanItem,
     ResearchSource,
@@ -18,7 +19,7 @@ from backend.models.schemas import (
 )
 
 def main():
-    print("Re-creating all tables in SQLite...")
+    print("Re-creating all tables...")
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
     print("Tables created successfully!")
@@ -26,8 +27,21 @@ def main():
     # Connect and seed mock data
     db = SessionLocal()
     try:
-        # Create Project 1 (Completed)
+        # Create Demo User
+        demo_user = User(
+            email="student@astraq.edu",
+            username="student_researcher",
+            password_hash="$2b$12$eImiTXuWVxfM37uY4JANjO5E.5R9aPz1zF1k2c3d4e5f6g7h8i9j0",
+            auth_provider="local"
+        )
+        db.add(demo_user)
+        db.commit()
+        db.refresh(demo_user)
+        print(f"Created user: {demo_user.username} (ID: {demo_user.id})")
+
+        # Create Project 1 (Completed) linked to demo_user
         project1 = ResearchProject(
+            user_id=demo_user.id,
             title="Healthcare SaaS Market Research",
             question="Should AstraQ target healthcare SaaS companies?",
             description="Analysis of healthcare software-as-a-service companies, regulatory landscape, compliance barriers, and software quality testing demand.",

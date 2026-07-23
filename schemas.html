@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AstraQ Database Schemas</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: #121418;
+      color: #E2E8F0;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      padding: 2.5rem;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .header-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #F8FAFC;
+      margin-bottom: 2rem;
+      letter-spacing: -0.02em;
+    }
+
+    .diagram-wrapper {
+      position: relative;
+      width: 100%;
+      max-width: 1100px;
+    }
+
+    /* SVG Overlay for connection lines */
+    .connections-svg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .diagram-grid {
+      position: relative;
+      z-index: 2;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2.5rem 3.5rem;
+    }
+
+    @media (max-width: 900px) {
+      .diagram-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .schema-card {
+      background-color: #1C1F26;
+      border: 1.5px solid #2E3440;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    }
+
+    .card-header {
+      background-color: #242832;
+      border-bottom: 1.5px solid #2E3440;
+      padding: 0.85rem 1rem;
+      text-align: center;
+      font-weight: 700;
+      font-size: 1.05rem;
+      color: #FFFFFF;
+      letter-spacing: 0.01em;
+    }
+
+    .card-body {
+      display: table;
+      width: 100%;
+      font-family: 'Fira Code', monospace;
+      font-size: 0.9rem;
+    }
+
+    .row {
+      display: table-row;
+    }
+
+    .cell {
+      display: table-cell;
+      padding: 0.55rem 1rem;
+      vertical-align: middle;
+    }
+
+    .cell-field {
+      text-align: left;
+      color: #E2E8F0;
+      width: 60%;
+      border-right: 1.5px solid #2E3440;
+    }
+
+    .cell-type {
+      text-align: left;
+      padding-left: 1rem;
+      color: #CBD5E1;
+      width: 40%;
+    }
+
+    .row:not(:last-child) .cell {
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    /* Color-coded keys matching connections */
+    .color-user {
+      color: #F97316; /* Orange */
+      font-weight: 600;
+    }
+
+    .color-project {
+      color: #38BDF8; /* Light Blue */
+      font-weight: 600;
+    }
+
+    .color-source {
+      color: #34D399; /* Emerald/Green */
+      font-weight: 600;
+    }
+
+    .color-theme {
+      color: #A78BFA; /* Purple */
+      font-weight: 600;
+    }
+
+    .pk-field {
+      color: #FBBF24; /* Amber PK */
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header-title">AstraQ Project Schema Diagram</div>
+
+  <div class="diagram-wrapper">
+    
+    <!-- SVG Connection Lines -->
+    <svg class="connections-svg" id="svgCanvas">
+      <defs>
+        <!-- Lines styled via JavaScript dynamically or SVG paths -->
+      </defs>
+    </svg>
+
+    <div class="diagram-grid">
+
+      <!-- Table 1: Users -->
+      <div class="schema-card" id="card-users">
+        <div class="card-header">Users</div>
+        <div class="card-body">
+          <div class="row">
+            <div class="cell cell-field pk-field">id</div>
+            <div class="cell cell-type pk-field">Int</div>
+          </div>
+          <div class="row">
+            <div class="cell cell-field">email</div>
+            <div class="cell cell-type">String</div>
+          </div>
+          <div class="row">
+            <div class="cell cell-field">username</div>
+            <div class="cell cell-type">String</div>
+          </div>
+          <div class="row">
+            <div class="cell cell-field">passwordHash</div>
+            <div class="cell cell-type">String</div>
+          </div>
+          <div class="row">
+            <div class="cell cell-field">authProvider</div>
+            <div class="cell cell-type">String</div>
+          </div>
+          <div class="row">
+            <div class="cell cell-field">profilePicUrl</div>
+            <div class="cell cell-type">String</div>
+          </div>
+          <div class="row">
+            <div class="cell cell-field">createdAt</div>
+            <div class="cell cell-type">Date</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Table 2: ResearchProjects -->
+      <div class="schema-card" id="card-projects">
+        <div class="card-header">ResearchProjects</div>
+        <div class="card-body">
+          <div class="row">
+            <div class="cell cell-field pk-field">id</div>
+            <div class="cell cell-type pk-field">Int</div>
+          </div>
+          <div class="row" id="field-user-id">
+            <div class="cell cell-field color-user">userID</div>
+            <div class="cell cell-type color-user">Int</div>
+          </div>
+          <div class="row">
+            <div class="cell cell-field">title</div>
+            <div class="cell cell-type">String</div>
+          </div>
+          <div class="row">
+            <div class="cell cell-field">question</div>
+            <div class="cell cell-type">Text</div>
+          </div>
+          <div class="row">
+            <div class="cell cell-field">description</div>
+            <div class="cell cell-type">Text</div>
+          </div>
+          <div class="row">
+            <div class="cell cell-field">researchType</div>
+            <div class="cell cell-type">String</div>
+          </div>
+          <div class="row">
+            <div class="cell cell-field">status</div>
+            <div class="cell cell-type">String</div>
+          </div>
+          <div class="row">
+            <div class="cell cell-field">score</div>
+            <div class="cell cell-type">Int</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Table 3: ResearchSources -->
+      <div class="schema-card" id="card-sources">
+        <div class="card-header">ResearchSources</div>
+        <div class="card-body">
+          <div class="row">
+            <div class="cell cell-field pk-field">id</div>
+            <div class="cell cell-type pk-field">Int</div>
+          </div>
+          <div class="row" id="field-source-project-id">
+            <div class="cell cell-field color-project">projectID</div>
+            <div class="cell cell-type color-project">Int</div>
+          </div>
+          <div class="row">
+            <div class="cell cell-field">url</div>
+            <div class="cell cell-type">String</div>
+          </div>
+          <div class="row">
+            <div class="cell cell-field">title</div>
+            <div class="cell cell-type">String</div>
+          </div>
+          <div class="row">
+            <div class="cell cell-field">domain</div>
+            <div class="cell cell-type">String</div>
+          </div>
+          <div class="row">
+            <div class="cell cell-field">credibility</div>
+            <div class="cell cell-type">Int</div>
+          </div>
+          <div class="row">
+            <div class="cell cell-field">status</div>
+            <div class="cell cell-type">String</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Table 4: ResearchDocuments -->
+      <div class="schema-card" id="card-documents">
+        <div class="card-header">ResearchDocuments</div>
+        <div class="card-body">
+          <div class="row">
+            <div class="cell cell-field pk-field">id</div>
+            <div class="cell cell-type pk-field">Int</div>
+          </div>
+          <div class="row" id="field-doc-source-id">
+            <div class="cell cell-field color-source">sourceID</div>
+            <div class="cell cell-type color-source">Int</div>
+          </div>
+          <div class="row">
+            <div class="cell cell-field">rawText</div>
+            <div class="cell cell-type">Text</div>
+          </div>
+          <div class="row">
+            <div class="cell cell-field">cleanedText</div>
+            <div class="cell cell-type">Text</div>
+          </div>
+          <div class="row">
+            <div class="cell cell-field">wordCount</div>
+            <div class="cell cell-type">Int</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Table 5: Themes -->
+      <div class="schema-card" id="card-themes">
+        <div class="card-header">Themes</div>
+        <div class="card-body">
+          <div class="row">
+            <div class="cell cell-field pk-field">id</div>
+            <div class="cell cell-type pk-field">Int</div>
+          </div>
+          <div class="row" id="field-theme-project-id">
+            <div class="cell cell-field color-project">projectID</div>
+            <div class="cell cell-type color-project">Int</div>
+          </div>
+          <div class="row">
+            <div class="cell cell-field">name</div>
+            <div class="cell cell-type">String</div>
+          </div>
+          <div class="row">
+            <div class="cell cell-field">description</div>
+            <div class="cell cell-type">Text</div>
+          </div>
+          <div class="row">
+            <div class="cell cell-field">sourceCount</div>
+            <div class="cell cell-type">Int</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Table 6: Findings -->
+      <div class="schema-card" id="card-findings">
+        <div class="card-header">Findings</div>
+        <div class="card-body">
+          <div class="row">
+            <div class="cell cell-field pk-field">id</div>
+            <div class="cell cell-type pk-field">Int</div>
+          </div>
+          <div class="row" id="field-finding-project-id">
+            <div class="cell cell-field color-project">projectID</div>
+            <div class="cell cell-type color-project">Int</div>
+          </div>
+          <div class="row" id="field-finding-theme-id">
+            <div class="cell cell-field color-theme">themeID</div>
+            <div class="cell cell-type color-theme">Int</div>
+          </div>
+          <div class="row">
+            <div class="cell cell-field">findingText</div>
+            <div class="cell cell-type">Text</div>
+          </div>
+          <div class="row">
+            <div class="cell cell-field">confidence</div>
+            <div class="cell cell-type">Float</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    // Draw connection lines dynamically between fields
+    function drawConnections() {
+      const svg = document.getElementById('svgCanvas');
+      const wrapper = document.querySelector('.diagram-wrapper').getBoundingClientRect();
+      svg.innerHTML = '';
+
+      function getCenter(elementId) {
+        const el = document.getElementById(elementId);
+        if (!el) return null;
+        const rect = el.getBoundingClientRect();
+        return {
+          x: rect.left - wrapper.left,
+          y: rect.top - wrapper.top + (rect.height / 2),
+          rightX: rect.right - wrapper.left,
+          leftX: rect.left - wrapper.left
+        };
+      }
+
+      function drawPath(startId, endId, color) {
+        const start = getCenter(startId);
+        const end = getCenter(endId);
+        if (!start || !end) return;
+
+        let pathStr = '';
+        if (start.rightX < end.leftX) {
+          // Left to right
+          const midX = (start.rightX + end.leftX) / 2;
+          pathStr = `M ${start.rightX} ${start.y} C ${midX} ${start.y}, ${midX} ${end.y}, ${end.leftX} ${end.y}`;
+        } else {
+          // Right to left or vertical curve
+          const midX = (start.leftX + end.rightX) / 2;
+          pathStr = `M ${start.leftX} ${start.y} C ${midX} ${start.y}, ${midX} ${end.y}, ${end.rightX} ${end.y}`;
+        }
+
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('d', pathStr);
+        path.setAttribute('stroke', color);
+        path.setAttribute('stroke-width', '3.5');
+        path.setAttribute('fill', 'none');
+        path.setAttribute('stroke-linecap', 'round');
+        svg.appendChild(path);
+      }
+
+      // Draw relationship lines
+      drawPath('card-users', 'field-user-id', '#F97316'); // Users.id -> ResearchProjects.userID (Orange)
+      drawPath('field-user-id', 'field-source-project-id', '#38BDF8'); // ResearchProjects -> ResearchSources (Light Blue)
+      drawPath('field-source-project-id', 'field-doc-source-id', '#34D399'); // ResearchSources -> ResearchDocuments (Green)
+      drawPath('field-user-id', 'field-theme-project-id', '#38BDF8'); // ResearchProjects -> Themes (Light Blue)
+      drawPath('field-theme-project-id', 'field-finding-theme-id', '#A78BFA'); // Themes -> Findings (Purple)
+    }
+
+    window.addEventListener('load', drawConnections);
+    window.addEventListener('resize', drawConnections);
+  </script>
+</body>
+</html>

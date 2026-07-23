@@ -1,4 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from './context/AuthContext';
+import LoginPage from './pages/LoginPage';
+import ProfilePictureUpload from './components/ProfilePictureUpload';
 import { 
   Plus, ArrowLeft, BarChart2, CheckCircle2, ChevronRight, FileText, 
   Globe, Layers, ListTodo, Network, RefreshCw, Scale, ShieldCheck, 
@@ -30,6 +33,8 @@ import AnalysisView from './components/AnalysisView';
 import RecommendationReportView from './components/RecommendationReportView';
 
 export default function App() {
+  const { user, isAuthenticated, isLoading, logout } = useAuth();
+
   // --- STATE DECLARATIONS ---
   const [projects, setProjects] = useState<ResearchProject[]>([]);
   const [planItems, setPlanItems] = useState<ResearchPlanItem[]>([]);
@@ -64,41 +69,56 @@ export default function App() {
     dataConfidence: 0.10
   });
 
-  // --- LOCAL STORAGE SYNC ---
-  // Initial load
-  useEffect(() => {
-    const storedProjects = localStorage.getItem('astraq_projects');
-    const storedPlanItems = localStorage.getItem('astraq_plan_items');
-    const storedSources = localStorage.getItem('astraq_sources');
-    const storedDocuments = localStorage.getItem('astraq_documents');
-    const storedKeywords = localStorage.getItem('astraq_keywords');
-    const storedThemes = localStorage.getItem('astraq_themes');
-    const storedScores = localStorage.getItem('astraq_project_scores');
-    const storedWeights = localStorage.getItem('astraq_weights');
+  // --- USER-ISOLATED LOCAL STORAGE SYNC ---
+  const userKey = user?.email ? user.email.toLowerCase() : 'guest';
 
-    if (storedProjects) setProjects(JSON.parse(storedProjects));
-    if (storedPlanItems) setPlanItems(JSON.parse(storedPlanItems));
-    if (storedSources) setSources(JSON.parse(storedSources));
-    if (storedDocuments) setDocuments(JSON.parse(storedDocuments));
-    if (storedKeywords) setKeywords(JSON.parse(storedKeywords));
-    if (storedThemes) setThemes(JSON.parse(storedThemes));
-    if (storedScores) setProjectScores(JSON.parse(storedScores));
-    if (storedWeights) setWeights(JSON.parse(storedWeights));
+  // Purge legacy global local storage data on initial app load
+  useEffect(() => {
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith('astraq_')) {
+        localStorage.removeItem(key);
+      }
+    });
   }, []);
 
-  // Save changes
+  // Load data for the current logged-in user email
   useEffect(() => {
-    if (projects.length > 0) {
-      localStorage.setItem('astraq_projects', JSON.stringify(projects));
-      localStorage.setItem('astraq_plan_items', JSON.stringify(planItems));
-      localStorage.setItem('astraq_sources', JSON.stringify(sources));
-      localStorage.setItem('astraq_documents', JSON.stringify(documents));
-      localStorage.setItem('astraq_keywords', JSON.stringify(keywords));
-      localStorage.setItem('astraq_themes', JSON.stringify(themes));
-      localStorage.setItem('astraq_project_scores', JSON.stringify(projectScores));
-      localStorage.setItem('astraq_weights', JSON.stringify(weights));
-    }
-  }, [projects, planItems, sources, documents, keywords, themes, projectScores, weights]);
+    if (!userKey) return;
+
+    const storedProjects = localStorage.getItem(`astraq_projects_${userKey}`);
+    const storedPlanItems = localStorage.getItem(`astraq_plan_items_${userKey}`);
+    const storedSources = localStorage.getItem(`astraq_sources_${userKey}`);
+    const storedDocuments = localStorage.getItem(`astraq_documents_${userKey}`);
+    const storedKeywords = localStorage.getItem(`astraq_keywords_${userKey}`);
+    const storedThemes = localStorage.getItem(`astraq_themes_${userKey}`);
+    const storedScores = localStorage.getItem(`astraq_project_scores_${userKey}`);
+    const storedWeights = localStorage.getItem(`astraq_weights_${userKey}`);
+
+    setProjects(storedProjects ? JSON.parse(storedProjects) : []);
+    setPlanItems(storedPlanItems ? JSON.parse(storedPlanItems) : []);
+    setSources(storedSources ? JSON.parse(storedSources) : []);
+    setDocuments(storedDocuments ? JSON.parse(storedDocuments) : []);
+    setKeywords(storedKeywords ? JSON.parse(storedKeywords) : []);
+    setThemes(storedThemes ? JSON.parse(storedThemes) : []);
+    if (storedScores) setProjectScores(JSON.parse(storedScores));
+    if (storedWeights) setWeights(JSON.parse(storedWeights));
+
+    // Reset selected project view when switching users
+    setSelectedProjectId(null);
+  }, [userKey]);
+
+  // Save changes for the current logged-in user email
+  useEffect(() => {
+    if (!userKey) return;
+    localStorage.setItem(`astraq_projects_${userKey}`, JSON.stringify(projects));
+    localStorage.setItem(`astraq_plan_items_${userKey}`, JSON.stringify(planItems));
+    localStorage.setItem(`astraq_sources_${userKey}`, JSON.stringify(sources));
+    localStorage.setItem(`astraq_documents_${userKey}`, JSON.stringify(documents));
+    localStorage.setItem(`astraq_keywords_${userKey}`, JSON.stringify(keywords));
+    localStorage.setItem(`astraq_themes_${userKey}`, JSON.stringify(themes));
+    localStorage.setItem(`astraq_project_scores_${userKey}`, JSON.stringify(projectScores));
+    localStorage.setItem(`astraq_weights_${userKey}`, JSON.stringify(weights));
+  }, [userKey, projects, planItems, sources, documents, keywords, themes, projectScores, weights]);
 
   const activeProject = projects.find(p => p.id === selectedProjectId);
 
@@ -526,6 +546,25 @@ export default function App() {
     dataConfidence: 50
   };
 
+
+  // --- AUTH GATE ---
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#FAF9F6] dark:bg-[#121212] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-8 h-8 border-2 border-[#121212]/20 dark:border-white/20 border-t-[#121212] dark:border-t-white rounded-full animate-spin" />
+          <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#121212]/40 dark:text-white/40">
+            Loading...
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <LoginPage />;
+  }
+
   return (
     <div className="min-h-screen bg-[#FAF9F6] dark:bg-[#121212] font-sans antialiased text-[#121212] dark:text-[#FAF9F6] flex flex-col selection:bg-[#E2D1C3] dark:selection:bg-[#4A3B32]">
       
@@ -540,15 +579,35 @@ export default function App() {
           </span>
         </div>
 
-        {selectedProjectId && (
-          <button
-            onClick={() => setSelectedProjectId(null)}
-            className="text-[10px] uppercase tracking-widest font-bold px-4 py-2 border border-[#121212] dark:border-white/30 rounded-full hover:bg-[#121212] hover:text-white dark:hover:bg-white dark:hover:text-[#121212] transition-colors flex items-center gap-1.5 cursor-pointer"
-          >
-            <ArrowLeft className="w-3 h-3" />
-            Back to Dashboard
-          </button>
-        )}
+        <div className="flex items-center gap-4">
+          {selectedProjectId && (
+            <button
+              onClick={() => setSelectedProjectId(null)}
+              className="text-[10px] uppercase tracking-widest font-bold px-4 py-2 border border-[#121212] dark:border-white/30 rounded-full hover:bg-[#121212] hover:text-white dark:hover:bg-white dark:hover:text-[#121212] transition-colors flex items-center gap-1.5 cursor-pointer"
+            >
+              <ArrowLeft className="w-3 h-3" />
+              Back to Dashboard
+            </button>
+          )}
+
+          {/* User profile + logout */}
+          {user && (
+            <div className="flex items-center gap-3 border-l border-[#121212]/10 dark:border-white/10 pl-4">
+              <ProfilePictureUpload size={34} />
+              <div className="flex flex-col">
+                <span className="text-[10px] font-bold text-[#121212] dark:text-[#FAF9F6] tracking-wide">
+                  {user.username}
+                </span>
+                <button
+                  onClick={logout}
+                  className="text-[9px] uppercase tracking-[0.15em] font-bold text-[#121212]/40 dark:text-white/40 hover:text-red-600 dark:hover:text-red-400 transition-colors text-left cursor-pointer"
+                >
+                  Sign out
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </header>
 
       {/* Main Container Area */}

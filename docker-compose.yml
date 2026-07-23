@@ -1,0 +1,56 @@
+services:
+
+  # PostgreSQL
+  db:
+    image: postgres:15-alpine
+    container_name: astraq-postgres
+    environment:
+      POSTGRES_USER: astraq
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: astraq_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U astraq -d astraq_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # MinIO
+  minio:
+    image: minio/minio
+    container_name: astraq-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadminpassword
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # MinIO bucket initializer — creates the profile-pictures bucket on startup
+  createbuckets:
+    image: minio/mc
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 minioadmin minioadminpassword;
+      mc mb --ignore-existing local/profile-pictures;
+      mc anonymous set download local/profile-pictures;
+      echo 'Bucket profile-pictures is ready';
+      "
+
+volumes:
+  postgres_data:
+  minio_data:

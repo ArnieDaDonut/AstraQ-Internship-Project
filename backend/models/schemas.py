@@ -3,10 +3,30 @@ from sqlalchemy import Column, Integer, String, Text, Float, DateTime, ForeignKe
 from sqlalchemy.orm import relationship
 from backend.database.connection import Base
 
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String(255), unique=True, index=True, nullable=False)
+    username = Column(String(100), unique=True, index=True, nullable=False)
+    password_hash = Column(String(255), nullable=True)  # Null for OAuth-only users
+    auth_provider = Column(String(50), default="local")  # "local" or "google"
+    google_id = Column(String(255), unique=True, nullable=True)
+    profile_picture_url = Column(String(500), nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+    # Link user to their research projects (one user has many projects)
+    projects = relationship("ResearchProject", back_populates="user", cascade="all, delete-orphan")
+
+
 class ResearchProject(Base):
     __tablename__ = "research_projects"
 
     id = Column(Integer, primary_key=True, index=True)
+    # Foreign key linking project to owner user
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
     title = Column(String, nullable=False)
     question = Column(Text, nullable=False)
     description = Column(Text, nullable=True)
@@ -17,6 +37,8 @@ class ResearchProject(Base):
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
 
+    # Relationship back to User
+    user = relationship("User", back_populates="projects")
 
     plan_items = relationship("ResearchPlanItem", back_populates="project", cascade="all, delete-orphan")
     sources = relationship("ResearchSource", back_populates="project", cascade="all, delete-orphan")
