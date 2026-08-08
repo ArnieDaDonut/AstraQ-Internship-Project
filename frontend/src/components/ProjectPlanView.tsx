@@ -3,6 +3,7 @@ import {
   Sparkles, Plus, Trash2, Edit3, Check, X, AlertCircle, HelpCircle, FileSpreadsheet, ListTodo 
 } from 'lucide-react';
 import { ResearchProject, ResearchPlanItem } from '../types';
+import ReportPreferenceView from './ReportPreferenceView';
 
 interface ProjectPlanViewProps {
   project: ResearchProject;
@@ -11,12 +12,17 @@ interface ProjectPlanViewProps {
   onAddPlanItem: (category: string, description: string) => void;
   onUpdatePlanItem: (id: string, category: string, description: string) => void;
   onDeletePlanItem: (id: string) => void;
+  // New props for Report Preference workflow
+  onSaveReportPreference: (preference: string) => Promise<void>;
+  isSavingPreference: boolean;
 }
 
 export default function ProjectPlanView({ 
-  project, plan, onGeneratePlan, onAddPlanItem, onUpdatePlanItem, onDeletePlanItem 
+  project, plan, onGeneratePlan, onAddPlanItem, onUpdatePlanItem, onDeletePlanItem,
+  onSaveReportPreference, isSavingPreference
 }: ProjectPlanViewProps) {
   const [isAdding, setIsAdding] = useState(false);
+  const [isPrompting, setIsPrompting] = useState(false);
   const [newCategory, setNewCategory] = useState('');
   const [newDesc, setNewDesc] = useState('');
 
@@ -45,6 +51,26 @@ export default function ProjectPlanView({
     setEditingId(null);
   };
 
+  const handleGenerateClick = () => {
+    setIsPrompting(true);
+  };
+
+  const handleConfirmPreference = async (preference: string) => {
+    await onSaveReportPreference(preference);
+    setIsPrompting(false);
+    onGeneratePlan();
+  };
+
+  if (isPrompting) {
+    return (
+      <ReportPreferenceView 
+        isSaving={isSavingPreference}
+        onSubmit={handleConfirmPreference}
+        onCancel={() => setIsPrompting(false)}
+      />
+    );
+  }
+
   return (
     <div className="space-y-8">
       
@@ -65,7 +91,7 @@ export default function ProjectPlanView({
         <div>
           {plan.length === 0 ? (
             <button
-              onClick={onGeneratePlan}
+              onClick={handleGenerateClick}
               className="px-6 py-3 rounded-full text-[10px] uppercase tracking-widest font-bold bg-[#121212] text-white dark:bg-white dark:text-[#121212] hover:opacity-90 transition flex items-center gap-2 shadow-sm whitespace-nowrap cursor-pointer"
             >
               <Sparkles className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
@@ -95,7 +121,7 @@ export default function ProjectPlanView({
             </p>
           </div>
           <button
-            onClick={onGeneratePlan}
+            onClick={handleGenerateClick}
             className="px-6 py-3 rounded-full text-[10px] uppercase tracking-widest font-bold bg-[#121212] text-white dark:bg-white dark:text-[#121212] hover:opacity-90 transition-opacity cursor-pointer"
           >
             Generate Plan Now

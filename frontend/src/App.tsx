@@ -11,7 +11,7 @@ import {
 // Type definitions
 import { 
   ResearchProject, ResearchPlanItem, ResearchSource, ResearchDocument, 
-  Keyword, Theme, OpportunityWeights, ProjectStatus, ResearchType, SourceType 
+  Keyword, Theme, OpportunityWeights, ProjectStatus, ResearchType, SourceType, ResearchReport 
 } from './types';
 
 // Algorithms & Seed Utilities
@@ -27,9 +27,8 @@ import {
 // UI Subcomponents
 import Dashboard from './components/Dashboard';
 import CreateProjectModal from './components/CreateProjectModal';
-import ProjectPlanView from './components/ProjectPlanView';
-import SourceExplorerView from './components/SourceExplorerView';
-import AnalysisView from './components/AnalysisView';
+import ReportPreferenceView from './components/ReportPreferenceView';
+import ReportGeneratorView from './components/ReportGeneratorView';
 import RecommendationReportView from './components/RecommendationReportView';
 
 export default function App() {
@@ -45,19 +44,15 @@ export default function App() {
   
   // Selection & UI flow
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'plan' | 'sources' | 'analysis' | 'report'>('plan');
+  const [activeTab, setActiveTab] = useState<'preferences' | 'generator' | 'report'>('preferences');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-
-  // Opportunity Scores slider states mapped per project ID
-  const [projectScores, setProjectScores] = useState<Record<string, {
-    marketRelevance: number;
-    problemSeverity: number;
-    productFit: number;
-    competitionLevel: number;
-    buyerUrgency: number;
-    dataConfidence: number;
-  }>>({});
+  
+  const [isSavingPreference, setIsSavingPreference] = useState(false);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+  
+  // Scoring & Reports
+  const [projectScores, setProjectScores] = useState<Record<string, any>>({});
+  const [generatedReport, setGeneratedReport] = useState<ResearchReport | null>(null);
 
   // Model Weights distribution
   const [weights, setWeights] = useState<OpportunityWeights>({
@@ -72,14 +67,6 @@ export default function App() {
   // --- USER-ISOLATED LOCAL STORAGE SYNC ---
   const userKey = user?.email ? user.email.toLowerCase() : 'guest';
 
-  // Purge legacy global local storage data on initial app load
-  useEffect(() => {
-    Object.keys(localStorage).forEach(key => {
-      if (key.startsWith('astraq_')) {
-        localStorage.removeItem(key);
-      }
-    });
-  }, []);
 
   // Load data for the current logged-in user email
   useEffect(() => {
@@ -244,7 +231,12 @@ export default function App() {
     }));
 
     setSelectedProjectId(pId);
-    setActiveTab('plan');
+    setActiveTab('preferences');
+  };
+
+  const handleSelectProject = (projectId: string) => {
+    setSelectedProjectId(projectId);
+    setActiveTab('preferences');
   };
 
   // Delete project and clear associated relations
@@ -267,285 +259,78 @@ export default function App() {
     }
   };
 
-  // Generate research plan categories
-  const handleGeneratePlan = () => {
-    if (!selectedProjectId || !activeProject) return;
-
-    const generatedCategories = generatePlanForQuestion(selectedProjectId, activeProject.question);
-    setPlanItems(prev => [...generatedCategories, ...prev]);
-
-    // Update project status to Planning
-    updateProjectStatus(selectedProjectId, 'Planning');
-  };
-
-  const handleAddPlanItem = (category: string, description: string) => {
-    if (!selectedProjectId) return;
-    const newItem: ResearchPlanItem = {
-      id: 'plan-' + makeId(),
-      project_id: selectedProjectId,
-      category,
-      description
-    };
-    setPlanItems(prev => [newItem, ...prev]);
-    updateProjectStatus(selectedProjectId, 'Planning');
-  };
-
-  const handleUpdatePlanItem = (id: string, category: string, description: string) => {
-    setPlanItems(prev => prev.map(item => item.id === id ? { ...item, category, description } : item));
-  };
-
-  const handleDeletePlanItem = (id: string) => {
-    setPlanItems(prev => prev.filter(item => item.id !== id));
-  };
-
-  // Add source URL manually
-  const handleAddSource = (title: string, url: string, type: SourceType, notes?: string) => {
-    if (!selectedProjectId) return;
-
-    const sourceId = 'src-' + makeId();
-    const credibility = scoreCredibility(url, type);
-
-    const newSource: ResearchSource = {
-      id: sourceId,
-      project_id: selectedProjectId,
-      url,
-      title,
-      domain: new URL(url.startsWith('http') ? url : 'https://' + url).hostname,
-      source_type: type,
-      credibility_score: credibility,
-      relevance_score: 0,
-      status: 'Pending'
-    };
-
-    setSources(prev => [newSource, ...prev]);
-    updateProjectStatus(selectedProjectId, 'Sources Added');
-  };
-
-  // Discover matching sources automatically based on question
-  const handleDiscoverSources = () => {
-    if (!selectedProjectId || !activeProject) return;
-
-    const discoveries = generateDiscoveriesForQuestion(activeProject.question);
-    
-    const newSources: ResearchSource[] = discoveries.map(raw => {
-      const sId = 'src-' + makeId();
-      return {
-        id: sId,
-        project_id: selectedProjectId,
-        url: raw.url,
-        title: raw.title,
-        domain: new URL(raw.url).hostname,
-        source_type: raw.source_type,
-        credibility_score: scoreCredibility(raw.url, raw.source_type),
-        relevance_score: 0,
-        status: 'Pending'
-      };
-    });
-
-    // Populate temporary raw documents, which will be crawled during analysis
-    const newDocs: ResearchDocument[] = discoveries.map((raw, idx) => {
-      const sId = newSources[idx].id;
-      return {
-        id: 'doc-' + makeId(),
-        source_id: sId,
-        raw_text: raw.raw_text,
-        cleaned_text: cleanText(raw.raw_text),
-        word_count: raw.raw_text.split(/\s+/).length,
-        extracted_at: new Date().toISOString()
-      };
-    });
-
-    setSources(prev => [...newSources, ...prev]);
-    setDocuments(prev => [...newDocs, ...prev]);
-    updateProjectStatus(selectedProjectId, 'Sources Added');
-  };
-
-  // Re-run single extraction
-  const handleReRunExtraction = (id: string) => {
-    setSources(prev => prev.map(s => s.id === id ? { ...s, status: 'Pending' } : s));
-  };
-
-  // Remove source
-  const handleRemoveSource = (id: string) => {
-    setSources(prev => prev.filter(s => s.id !== id));
-    setDocuments(prev => prev.filter(d => d.source_id !== id));
-    setKeywords(prev => prev.filter(k => k.source_id !== id));
-  };
-
-  // Run full crawling, text extraction, tokenization, and vector space analysis
-  const handleAnalyzeSources = () => {
-    if (!selectedProjectId || !activeProject) return;
-
-    setIsAnalyzing(true);
-    updateProjectStatus(selectedProjectId, 'Analysis In Progress');
-
-    // Simulate 2-second processing time for full analytical depth
-    setTimeout(() => {
-      const projectSources = sources.filter(s => s.project_id === selectedProjectId);
-      const projectDocs = documents.filter(d => projectSources.some(s => s.id === d.source_id));
-
-      if (projectSources.length === 0) {
-        setIsAnalyzing(false);
-        updateProjectStatus(selectedProjectId, 'Planning');
-        return;
-      }
-
-      // 1. Term tokenization
-      const allDocsTokens = projectDocs.map(d => tokenize(d.cleaned_text));
-      
-      // 2. Compute IDF across corpus
-      const idf = computeIDF(allDocsTokens);
-
-      // 3. Compute relevance score and extract keywords for each source
-      const updatedSources = sources.map(s => {
-        if (s.project_id !== selectedProjectId) return s;
-        
-        const doc = projectDocs.find(d => d.source_id === s.id);
-        if (!doc) return s;
-
-        // Compute Cosine similarity relevance
-        const relevance = computeRelevanceScore(activeProject.question, doc.cleaned_text, idf);
-
-        return {
-          ...s,
-          relevance_score: relevance,
-          status: 'Extracted' as const
-        };
+  const handleSaveReportPreference = async (preference: string) => {
+    if (!activeProject) return;
+    setIsSavingPreference(true);
+    try {
+      await fetch('/api/research-projects/save-preference', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          research_type: activeProject.research_type,
+          preference: preference
+        })
       });
-
-      // 4. Extract and save top keywords
-      const newKeywords: Keyword[] = [];
-      projectSources.forEach(s => {
-        const doc = projectDocs.find(d => d.source_id === s.id);
-        if (doc) {
-          const docTokens = tokenize(doc.cleaned_text);
-          const topKws = extractTopKeywords(docTokens, idf, 10);
-          topKws.forEach(kw => {
-            newKeywords.push({
-              id: 'kw-' + makeId(),
-              source_id: s.id,
-              keyword: kw.keyword,
-              score: kw.score,
-              frequency: kw.frequency
-            });
-          });
-        }
-      });
-
-      // 5. Group sources into themes based on keyword overlaps
-      const sourcesForThemes = updatedSources
-        .filter(s => s.project_id === selectedProjectId)
-        .map(s => ({
-          id: s.id,
-          title: s.title,
-          cleanedText: projectDocs.find(d => d.source_id === s.id)?.cleaned_text || '',
-          keywords: newKeywords.filter(k => k.source_id === s.id).map(k => ({ keyword: k.keyword, score: k.score }))
-        }));
-
-      const clusteredThemes = groupSourcesIntoThemes(sourcesForThemes);
-      const newThemes: Theme[] = clusteredThemes.map(t => ({
-        id: 'theme-' + makeId(),
-        project_id: selectedProjectId,
-        name: t.name,
-        description: t.description,
-        source_count: t.sourceIds.length,
-        keywords: t.keywords
-      }));
-
-      // 6. Compute automatic opportunity sliders baseline
-      const avgRelevance = Math.round(
-        sourcesForThemes.reduce((sum, s) => sum + (updatedSources.find(us => us.id === s.id)?.relevance_score || 0), 0) / sourcesForThemes.length
-      );
-      const avgCredibility = Math.round(
-        updatedSources.filter(s => s.project_id === selectedProjectId).reduce((sum, s) => sum + s.credibility_score, 0) / sourcesForThemes.length
-      );
-
-      const calculatedScores = {
-        marketRelevance: Math.min(95, Math.max(30, avgRelevance + 5)),
-        problemSeverity: 80, // healthy default severity
-        productFit: 75,      // healthy default product-market compatibility
-        competitionLevel: 65, // moderate competitive favorability
-        buyerUrgency: 70,    // high baseline urgency
-        dataConfidence: avgCredibility
-      };
-
-      const finalOpportunityScore = calculateOpportunityScore(calculatedScores, weights);
-
-      // Save everything
-      setSources(updatedSources);
-      setKeywords(prev => [...newKeywords, ...prev.filter(k => !projectSources.some(s => s.id === k.source_id))]);
-      setThemes(prev => [...newThemes, ...prev.filter(t => t.project_id !== selectedProjectId)]);
-      setProjectScores(prev => ({
-        ...prev,
-        [selectedProjectId]: calculatedScores
-      }));
-
-      // Update project final recommendation & score
-      setProjects(prev => prev.map(p => {
-        if (p.id === selectedProjectId) {
-          return {
-            ...p,
-            status: 'Report Ready',
-            opportunity_score: finalOpportunityScore,
-            updated_at: new Date().toISOString()
-          };
-        }
-        return p;
-      }));
-
-      setIsAnalyzing(false);
-      setActiveTab('analysis'); // navigate to visual dashboard
-    }, 2000);
-  };
-
-  // Update Weights and recalculate overall score
-  const handleUpdateWeights = (newWeights: OpportunityWeights) => {
-    setWeights(newWeights);
-    
-    if (selectedProjectId && projectScores[selectedProjectId]) {
-      const finalScore = calculateOpportunityScore(projectScores[selectedProjectId], newWeights);
-      setProjects(prev => prev.map(p => p.id === selectedProjectId ? { ...p, opportunity_score: finalScore } : p));
+      // Move to Generator view after saving preference
+      setActiveTab('generator');
+    } catch (err) {
+      console.error('Failed to save preference:', err);
+    } finally {
+      setIsSavingPreference(false);
     }
   };
 
-  // Update Scores from sliders and recalculate overall score
-  const handleUpdateOpportunityScores = (scores: typeof projectScores[string]) => {
-    if (!selectedProjectId) return;
+  const handleGenerateFinalRecommendation = async () => {
+    if (!selectedProjectId || !activeProject) return;
     
-    setProjectScores(prev => ({
-      ...prev,
-      [selectedProjectId]: scores
-    }));
-
-    const finalScore = calculateOpportunityScore(scores, weights);
-    setProjects(prev => prev.map(p => p.id === selectedProjectId ? { ...p, opportunity_score: finalScore } : p));
+    setIsGeneratingReport(true);
+    setProjects(prev => prev.map(p => 
+      p.id === selectedProjectId ? { ...p, status: 'Completed', updated_at: new Date().toISOString() } : p
+    ));
+    
+    try {
+      const res = await fetch('/api/research-projects/generate-report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          research_type: activeProject.research_type,
+          question: activeProject.question
+        })
+      });
+      
+      if (res.ok) {
+        const reportData = await res.json();
+        setGeneratedReport({
+          id: 'report-' + makeId(),
+          project_id: selectedProjectId,
+          title: reportData.title,
+          subtitle: reportData.subtitle,
+          abstract: reportData.abstract,
+          introduction: reportData.introduction,
+          market_and_technical_analysis: reportData.market_and_technical_analysis,
+          key_findings: reportData.key_findings,
+          risk_assessment: reportData.risk_assessment,
+          phased_roadmap: reportData.phased_roadmap,
+          conclusion: reportData.conclusion,
+          references: reportData.references,
+          
+          // Legacy fallbacks if needed
+          executive_summary: reportData.abstract || reportData.executive_summary,
+          recommendation: reportData.conclusion || reportData.recommendation,
+          reasoning: reportData.market_and_technical_analysis || reportData.reasoning,
+          generated_at: new Date().toISOString()
+        });
+        setActiveTab('report');
+      } else {
+        alert('Failed to generate report. Check API quota or server logs.');
+      }
+    } catch (err) {
+      console.error('Failed to generate final report:', err);
+      alert('Network error while generating report.');
+    } finally {
+      setIsGeneratingReport(false);
+    }
   };
-
-  // Helper to change status
-  const updateProjectStatus = (projectId: string, status: ProjectStatus) => {
-    setProjects(prev => prev.map(p => p.id === projectId ? { ...p, status, updated_at: new Date().toISOString() } : p));
-  };
-
-  // Filter local lists relative to active project workspace
-  const currentPlan = planItems.filter(item => item.project_id === selectedProjectId);
-  const currentSources = sources.filter(s => s.project_id === selectedProjectId);
-  const currentThemes = themes.filter(t => t.project_id === selectedProjectId);
-  const currentScores = selectedProjectId ? projectScores[selectedProjectId] || {
-    marketRelevance: 50,
-    problemSeverity: 50,
-    productFit: 50,
-    competitionLevel: 50,
-    buyerUrgency: 50,
-    dataConfidence: 50
-  } : {
-    marketRelevance: 50,
-    problemSeverity: 50,
-    productFit: 50,
-    competitionLevel: 50,
-    buyerUrgency: 50,
-    dataConfidence: 50
-  };
-
 
   // --- AUTH GATE ---
   if (isLoading) {
@@ -656,13 +441,12 @@ export default function App() {
               )}
             </div>
 
-            {/* Stage/Workflow Steps Tabs */}
-            <div className="flex flex-wrap bg-white/40 dark:bg-white/[0.01] p-1 rounded-none border border-[#121212]/10 dark:border-white/10 gap-1">
+            {/* Simplified Stage/Workflow Steps Tabs */}
+            <div className="flex flex-wrap bg-white/40 dark:bg-white/[0.01] p-1 rounded-none border border-[#121212]/10 dark:border-white/10 gap-1 mb-8">
               {[
-                { key: 'plan', label: '1. Research Plan', icon: ListTodo },
-                { key: 'sources', label: '2. Crawler & Sources', icon: Globe },
-                { key: 'analysis', label: '3. TF-IDF & Clustered Themes', icon: BarChart2 },
-                { key: 'report', label: '4. Recommendation Report', icon: ShieldCheck }
+                { key: 'preferences', label: '1. Preferences', icon: FileText },
+                { key: 'generator', label: '2. Generate Report', icon: Sparkles },
+                { key: 'report', label: '3. Final Report', icon: ShieldCheck }
               ].map((tab) => {
                 const Icon = tab.icon;
                 const isSelected = activeTab === tab.key;
@@ -685,52 +469,30 @@ export default function App() {
 
             {/* Tab Panels */}
             <div className="space-y-8">
-              {activeTab === 'plan' && (
-                <ProjectPlanView
-                  project={activeProject}
-                  plan={currentPlan}
-                  onGeneratePlan={handleGeneratePlan}
-                  onAddPlanItem={handleAddPlanItem}
-                  onUpdatePlanItem={handleUpdatePlanItem}
-                  onDeletePlanItem={handleDeletePlanItem}
+              {activeTab === 'preferences' && (
+                <ReportPreferenceView
+                  isSaving={isSavingPreference}
+                  onSubmit={handleSaveReportPreference}
+                  onCancel={() => setSelectedProjectId(null)}
                 />
               )}
 
-              {activeTab === 'sources' && (
-                <SourceExplorerView
+              {activeTab === 'generator' && (
+                <ReportGeneratorView
                   project={activeProject}
-                  sources={currentSources}
-                  documents={documents}
-                  onAddSource={handleAddSource}
-                  onDiscoverSources={handleDiscoverSources}
-                  onAnalyzeSources={handleAnalyzeSources}
-                  onRemoveSource={handleRemoveSource}
-                  onReRunExtraction={handleReRunExtraction}
-                  isAnalyzing={isAnalyzing}
-                />
-              )}
-
-              {activeTab === 'analysis' && (
-                <AnalysisView
-                  project={activeProject}
-                  sources={currentSources}
-                  documents={documents}
-                  keywords={keywords}
-                  themes={currentThemes}
-                  weights={weights}
-                  onUpdateWeights={handleUpdateWeights}
-                  opportunityScores={currentScores}
-                  onUpdateOpportunityScores={handleUpdateOpportunityScores}
+                  onGenerate={handleGenerateFinalRecommendation}
+                  isGenerating={isGeneratingReport}
                 />
               )}
 
               {activeTab === 'report' && (
                 <RecommendationReportView
                   project={activeProject}
-                  sources={currentSources}
-                  documents={documents}
-                  themes={currentThemes}
-                  opportunityScore={activeProject.opportunity_score}
+                  sources={[]}
+                  documents={[]}
+                  themes={[]}
+                  opportunityScore={projectScores[selectedProjectId] || 0}
+                  report={generatedReport}
                 />
               )}
             </div>

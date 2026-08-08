@@ -147,3 +147,40 @@ class ResearchReport(Base):
 
 
     project = relationship("ResearchProject", back_populates="reports")
+
+
+class Prompt(Base):
+    __tablename__ = "prompts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    prompt_text = Column(Text, nullable=False)
+    description = Column(Text, nullable=True)
+    research_type = Column(String, nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+
+class UploadedFile(Base):
+    __tablename__ = "uploaded_files"
+
+    id = Column(Integer, primary_key=True, index=True)
+    filename = Column(String, nullable=False)
+    file_path = Column(String, nullable=False)
+    file_type = Column(String, nullable=True)
+    file_size = Column(Integer, nullable=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
+    project_id = Column(Integer, ForeignKey("research_projects.id", ondelete="CASCADE"), nullable=True)
+    uploaded_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    user = relationship("User", backref="uploaded_files")
+    project = relationship("ResearchProject", backref="uploaded_files")
+
+
+class ResearchTypeModel(Base):
+    __tablename__ = "research_types"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, index=True, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
+
+    user = relationship("User", backref="custom_research_types")

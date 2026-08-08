@@ -1,7 +1,12 @@
 export type ProjectStatus = 'Draft' | 'Planning' | 'Sources Added' | 'Analysis In Progress' | 'Report Ready' | 'Completed';
 
-export type ResearchType = 'Market Research' | 'Competitive Analysis' | 'Startup Validation' | 'Technology Trend' | 'Custom';
+export type ResearchType = string;
 
+export interface ResearchTypeModel {
+  id: number;
+  name: string;
+  user_id?: number | null;
+}
 export interface ResearchProject {
   id: string;
   title: string;
@@ -74,14 +79,45 @@ export interface Finding {
   confidence_score: number;
 }
 
+export interface DetailedFinding {
+  title: string;
+  explanation: string;
+  impact_score: number;
+}
+
+export interface DetailedRisk {
+  category: string;
+  risk_title: string;
+  description: string;
+  severity: string;
+}
+
+export interface PhasedRoadmap {
+  phase: string;
+  objective: string;
+  key_actions: string[];
+}
+
 export interface ResearchReport {
   id: string;
   project_id: string;
-  executive_summary: string;
-  recommendation: string; // 'Strong Yes' | 'Yes, but validate further' | 'Maybe' | 'Not recommended' | 'Insufficient opportunity'
-  reasoning: string;
-  risks: string[];
-  open_questions: string[];
+  title?: string;
+  subtitle?: string;
+  abstract?: string;
+  introduction?: string;
+  market_and_technical_analysis?: string;
+  key_findings?: DetailedFinding[];
+  risk_assessment?: DetailedRisk[];
+  phased_roadmap?: PhasedRoadmap[];
+  conclusion?: string;
+  references?: string[];
+  
+  // Legacy / fallback fields
+  executive_summary?: string;
+  recommendation?: string;
+  reasoning?: string;
+  risks?: string[];
+  open_questions?: string[];
   generated_at: string;
 }
 
@@ -94,3 +130,9 @@ export interface OpportunityWeights {
   buyerUrgency: number;    // 10%
   dataConfidence: number;  // 10%
 }
+
+export interface MasterPromptResponse {
+  prompt_text: string;
+  workflow_summary: string;
+}
+

@@ -18,6 +18,9 @@ export default function Dashboard({ projects, onCreateClick, onOpenProject, onDe
   const [selectedType, setSelectedType] = useState<string>('All');
   const [selectedStatus, setSelectedStatus] = useState<string>('All');
 
+  // Unique types from projects
+  const availableTypes = Array.from(new Set(projects.map(p => p.research_type)));
+
   // Filter projects
   const filteredProjects = projects.filter(p => {
     const matchesSearch = p.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -153,10 +156,9 @@ export default function Dashboard({ projects, onCreateClick, onOpenProject, onDe
               className="bg-transparent border-none text-[10px] uppercase tracking-wider font-semibold text-[#121212]/70 dark:text-white/70 focus:outline-none pr-2 py-0.5 cursor-pointer"
             >
               <option value="All">All Types</option>
-              <option value="Market Research">Market Research</option>
-              <option value="Competitive Analysis">Competitive Analysis</option>
-              <option value="Startup Validation">Startup Validation</option>
-              <option value="Technology Trend">Technology Trend</option>
+              {availableTypes.map(t => (
+                <option key={t} value={t}>{t}</option>
+              ))}
             </select>
           </div>
 

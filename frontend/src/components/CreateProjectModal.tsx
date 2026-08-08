@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { X, HelpCircle, Briefcase, TrendingUp, Cpu, Award } from 'lucide-react';
-import { ResearchType } from '../types';
+import React, { useState, useEffect } from 'react';
+import { X, HelpCircle, Briefcase, TrendingUp, Cpu, Award, Plus } from 'lucide-react';
+import { ResearchType, ResearchTypeModel } from '../types';
+import { useAuth } from '../context/AuthContext';
 
 interface CreateProjectModalProps {
   isOpen: boolean;
@@ -13,7 +14,48 @@ export default function CreateProjectModal({ isOpen, onClose, onCreate }: Create
   const [question, setQuestion] = useState('');
   const [description, setDescription] = useState('');
   const [type, setType] = useState<ResearchType>('Market Research');
+  const [availableTypes, setAvailableTypes] = useState<ResearchTypeModel[]>([]);
+  const [isAddingType, setIsAddingType] = useState(false);
+  const [newType, setNewType] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const { token } = useAuth();
+
+  useEffect(() => {
+    if (isOpen && token) {
+      fetch('/api/research-types', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+        .then(res => res.json())
+        .then(data => setAvailableTypes(data))
+        .catch(console.error);
+    }
+  }, [isOpen, token]);
+
+  const handleAddCustomType = async () => {
+    if (!newType.trim()) return;
+    try {
+      const res = await fetch('/api/research-types', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ name: newType.trim() })
+      });
+      if (res.ok) {
+        const added = await res.json();
+        // check if already in availableTypes to prevent duplicates
+        if (!availableTypes.find(t => t.id === added.id)) {
+          setAvailableTypes(prev => [...prev, added]);
+        }
+        setType(added.name);
+        setNewType('');
+        setIsAddingType(false);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -145,20 +187,61 @@ export default function CreateProjectModal({ isOpen, onClose, onCreate }: Create
               Research Type
             </label>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {(['Market Research', 'Competitive Analysis', 'Startup Validation', 'Technology Trend'] as ResearchType[]).map((t) => (
+              {availableTypes.map((t) => (
                 <button
-                  key={t}
+                  key={t.id}
                   type="button"
-                  onClick={() => setType(t)}
+                  onClick={() => setType(t.name)}
                   className={`px-3 py-2 rounded-xl text-xs font-medium border transition ${
-                    type === t
+                    type === t.name
                       ? 'border-zinc-900 dark:border-zinc-200 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900'
                       : 'border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/50'
                   }`}
                 >
-                  {t}
+                  {t.name}
                 </button>
               ))}
+              
+              {!isAddingType ? (
+                <button
+                  type="button"
+                  onClick={() => setIsAddingType(true)}
+                  className="flex items-center justify-center gap-1 px-3 py-2 rounded-xl text-xs font-medium border border-dashed border-zinc-300 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Add Custom
+                </button>
+              ) : (
+                <div className="flex items-center gap-1 col-span-2 sm:col-span-2">
+                  <input
+                    type="text"
+                    value={newType}
+                    onChange={e => setNewType(e.target.value)}
+                    placeholder="New type..."
+                    className="flex-1 px-2 py-1.5 rounded-lg border text-xs bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-zinc-400"
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddCustomType();
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddCustomType}
+                    className="px-2 py-1.5 rounded-lg bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-xs font-medium"
+                  >
+                    Add
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setIsAddingType(false); setNewType(''); }}
+                    className="px-2 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 text-xs"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 

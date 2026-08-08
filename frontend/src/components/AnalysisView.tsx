@@ -31,10 +31,12 @@ interface AnalysisViewProps {
     buyerUrgency: number;
     dataConfidence: number;
   }) => void;
+  onGenerateRecommendation?: () => void;
+  isGeneratingReport?: boolean;
 }
 
 export default function AnalysisView({
-  project, sources, documents, keywords, themes, weights, onUpdateWeights, opportunityScores, onUpdateOpportunityScores
+  project, sources, documents, keywords, themes, weights, onUpdateWeights, opportunityScores, onUpdateOpportunityScores, onGenerateRecommendation, isGeneratingReport
 }: AnalysisViewProps) {
   const [activeTab, setActiveTab] = useState<'tfidf' | 'themes' | 'opportunity'>('tfidf');
 
