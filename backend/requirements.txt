@@ -8,3 +8,4 @@ python-multipart==0.0.9
 minio==7.2.8
 google-genai==1.47.0
 pydantic==2.13.4
+pgvector==0.4.2
