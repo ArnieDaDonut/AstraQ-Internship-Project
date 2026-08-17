@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 import json
 import datetime
 
@@ -18,6 +18,8 @@ class SavePreferenceRequest(BaseModel):
 class GenerateReportRequest(BaseModel):
     research_type: str
     question: str
+    context_links: Optional[List[str]] = []
+    context_file_contents: Optional[List[str]] = []
 
 class ReportResponse(BaseModel):
     executive_summary: str
@@ -41,26 +43,20 @@ def save_preference(req: SavePreferenceRequest, db: Session = Depends(get_db)):
     db.commit()
     return {"status": "success"}
 
-@router.post("/generate-report", response_model=ReportResponse)
+@router.post("/generate-report")
 def generate_report_endpoint(req: GenerateReportRequest, db: Session = Depends(get_db)):
-    # Fetch preference from DB
     prompt_obj = db.query(Prompt).filter(Prompt.research_type == req.research_type).first()
     preferences = prompt_obj.prompt_text if prompt_obj else "Professional business format."
 
     try:
-        # Call agent
         report_data = generate_final_report(
             question=req.question,
             research_type=req.research_type,
-            preferences=preferences
+            preferences=preferences,
+            context_links=req.context_links or [],
+            context_file_contents=req.context_file_contents or [],
         )
+        return report_data
+    
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Agent report generation failed: {str(e)}")
-
-    # Return directly, skipping DB persistence to be stateless with the mock frontend
-    return ReportResponse(
-        executive_summary=report_data["executive_summary"],
-        recommendation=report_data["recommendation"],
-        risks=report_data["risks"],
-        open_questions=report_data["open_questions"]
-    )
+        raise HTTPException(status_code=500, detail=f"Agent report generation failed:{str(e)}")

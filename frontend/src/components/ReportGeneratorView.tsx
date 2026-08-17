@@ -4,15 +4,23 @@ import { ResearchProject } from '../types';
 
 interface ReportGeneratorViewProps {
   project: ResearchProject;
+  contextLinks?: string[];
+  contextFileContents?: string[];
   onGenerate: () => void;
   isGenerating: boolean;
 }
 
 export default function ReportGeneratorView({
   project,
+  contextLinks = [],
+  contextFileContents = [],
   onGenerate,
   isGenerating
 }: ReportGeneratorViewProps) {
+  const linkCount = contextLinks.filter(l => l.trim() !== '').length;
+  const fileCount = contextFileContents.length;
+  const totalChars = contextFileContents.reduce((sum, text) => sum + text.length, 0);
+
   return (
     <div className="space-y-6">
       <div className="bg-white/50 dark:bg-white/[0.02] border border-[#121212]/10 dark:border-white/10 p-10 rounded-none flex flex-col items-center text-center">
@@ -26,7 +34,7 @@ export default function ReportGeneratorView({
         </h2>
         
         <p className="text-sm font-light text-[#121212]/70 dark:text-[#FAF9F6]/70 max-w-xl mx-auto leading-relaxed mb-8">
-          We have saved your preferences. The AI agent will now use the research context and your instructions to autonomously synthesize the final strategic report.
+          We have saved your preferences and context. The AI agent will now synthesize the final strategic report using all provided materials.
         </p>
 
         <div className="w-full max-w-2xl bg-white dark:bg-[#121212]/50 border border-[#121212]/10 dark:border-white/10 p-6 rounded-none text-left mb-10 space-y-4">
@@ -39,9 +47,31 @@ export default function ReportGeneratorView({
               "{project.question}"
             </p>
           </div>
+
+          {/* Attached Context Summary */}
+          {(linkCount > 0 || fileCount > 0) && (
+            <div className="pt-4 border-t border-[#121212]/10 dark:border-white/10 space-y-2">
+              <span className="text-[10px] font-bold text-[#121212]/50 dark:text-white/40 uppercase tracking-[0.2em] block">
+                ATTACHED CONTEXT & SOURCES NOTED
+              </span>
+              <div className="flex flex-wrap gap-2 text-xs font-mono">
+                {linkCount > 0 && (
+                  <span className="px-2.5 py-1 bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 font-bold">
+                    🔗 {linkCount} Link{linkCount > 1 ? 's' : ''} Included
+                  </span>
+                )}
+                {fileCount > 0 && (
+                  <span className="px-2.5 py-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-bold">
+                    📄 {fileCount} Document{fileCount > 1 ? 's' : ''} ({(totalChars / 1000).toFixed(1)}k chars)
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         <button
+          type="button"
           onClick={onGenerate}
           disabled={isGenerating}
           className="group relative flex items-center gap-3 px-8 py-4 bg-[#121212] text-white dark:bg-white dark:text-[#121212] rounded-full hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:hover:scale-100 cursor-pointer shadow-lg"

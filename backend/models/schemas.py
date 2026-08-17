@@ -24,7 +24,7 @@ class User(Base):
 class ResearchProject(Base):
     __tablename__ = "research_projects"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(String, primary_key=True, index=True)
     # Foreign key linking project to owner user
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
     title = Column(String, nullable=False)
@@ -50,8 +50,8 @@ class ResearchProject(Base):
 class ResearchPlanItem(Base):
     __tablename__ = "research_plan_items"
 
-    id = Column(Integer, primary_key=True, index=True)
-    project_id = Column(Integer, ForeignKey("research_projects.id", ondelete="CASCADE"), nullable=False)
+    id = Column(String, primary_key=True, index=True)
+    project_id = Column(String, ForeignKey("research_projects.id", ondelete="CASCADE"), nullable=False)
     category = Column(String, nullable=False)
     description = Column(Text, nullable=True)
 
@@ -62,8 +62,8 @@ class ResearchPlanItem(Base):
 class ResearchSource(Base):
     __tablename__ = "research_sources"
 
-    id = Column(Integer, primary_key=True, index=True)
-    project_id = Column(Integer, ForeignKey("research_projects.id", ondelete="CASCADE"), nullable=False)
+    id = Column(String, primary_key=True, index=True)
+    project_id = Column(String, ForeignKey("research_projects.id", ondelete="CASCADE"), nullable=False)
     url = Column(String, nullable=False)
     title = Column(String, nullable=True)
     domain = Column(String, nullable=True)
@@ -81,8 +81,8 @@ class ResearchSource(Base):
 class ResearchDocument(Base):
     __tablename__ = "research_documents"
 
-    id = Column(Integer, primary_key=True, index=True)
-    source_id = Column(Integer, ForeignKey("research_sources.id", ondelete="CASCADE"), nullable=False, unique=True)
+    id = Column(String, primary_key=True, index=True)
+    source_id = Column(String, ForeignKey("research_sources.id", ondelete="CASCADE"), nullable=False, unique=True)
     raw_text = Column(Text, nullable=False)
     cleaned_text = Column(Text, nullable=False)
     word_count = Column(Integer, nullable=False)
@@ -95,8 +95,8 @@ class ResearchDocument(Base):
 class Keyword(Base):
     __tablename__ = "keywords"
 
-    id = Column(Integer, primary_key=True, index=True)
-    source_id = Column(Integer, ForeignKey("research_sources.id", ondelete="CASCADE"), nullable=False)
+    id = Column(String, primary_key=True, index=True)
+    source_id = Column(String, ForeignKey("research_sources.id", ondelete="CASCADE"), nullable=False)
     keyword = Column(String, nullable=False)
     score = Column(Float, nullable=False)
     frequency = Column(Integer, nullable=False)
@@ -108,8 +108,8 @@ class Keyword(Base):
 class Theme(Base):
     __tablename__ = "themes"
 
-    id = Column(Integer, primary_key=True, index=True)
-    project_id = Column(Integer, ForeignKey("research_projects.id", ondelete="CASCADE"), nullable=False)
+    id = Column(String, primary_key=True, index=True)
+    project_id = Column(String, ForeignKey("research_projects.id", ondelete="CASCADE"), nullable=False)
     name = Column(String, nullable=False)
     description = Column(Text, nullable=True)
     source_count = Column(Integer, default=0)
@@ -122,9 +122,9 @@ class Theme(Base):
 class Finding(Base):
     __tablename__ = "findings"
 
-    id = Column(Integer, primary_key=True, index=True)
-    project_id = Column(Integer, ForeignKey("research_projects.id", ondelete="CASCADE"), nullable=False)
-    theme_id = Column(Integer, ForeignKey("themes.id", ondelete="SET NULL"), nullable=True)
+    id = Column(String, primary_key=True, index=True)
+    project_id = Column(String, ForeignKey("research_projects.id", ondelete="CASCADE"), nullable=False)
+    theme_id = Column(String, ForeignKey("themes.id", ondelete="SET NULL"), nullable=True)
     finding_text = Column(Text, nullable=False)
     supporting_source_count = Column(Integer, default=0)
     confidence_score = Column(Float, nullable=True)
@@ -137,8 +137,8 @@ class Finding(Base):
 class ResearchReport(Base):
     __tablename__ = "research_reports"
 
-    id = Column(Integer, primary_key=True, index=True)
-    project_id = Column(Integer, ForeignKey("research_projects.id", ondelete="CASCADE"), nullable=False)
+    id = Column(String, primary_key=True, index=True)
+    project_id = Column(String, ForeignKey("research_projects.id", ondelete="CASCADE"), nullable=False)
     executive_summary = Column(Text, nullable=False)
     recommendation = Column(Text, nullable=False)
     risks = Column(Text, nullable=True)
@@ -163,13 +163,13 @@ class Prompt(Base):
 class UploadedFile(Base):
     __tablename__ = "uploaded_files"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(String, primary_key=True, index=True)
     filename = Column(String, nullable=False)
     file_path = Column(String, nullable=False)
     file_type = Column(String, nullable=True)
     file_size = Column(Integer, nullable=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
-    project_id = Column(Integer, ForeignKey("research_projects.id", ondelete="CASCADE"), nullable=True)
+    project_id = Column(String, ForeignKey("research_projects.id", ondelete="CASCADE"), nullable=True)
     uploaded_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     user = relationship("User", backref="uploaded_files")
@@ -179,7 +179,7 @@ class UploadedFile(Base):
 class ResearchTypeModel(Base):
     __tablename__ = "research_types"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(String, primary_key=True, index=True)
     name = Column(String, unique=True, index=True, nullable=False)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
 

@@ -52,7 +52,7 @@ export default function ReportPreferenceView({
           
           <button
             onClick={() => onSubmit(preference)}
-            disabled={isSaving || !preference.trim()}
+            disabled={isSaving}
             className="flex items-center gap-2 px-6 py-3 rounded-full text-[10px] font-bold uppercase tracking-widest bg-[#121212] text-white dark:bg-white dark:text-[#121212] hover:opacity-90 transition-opacity disabled:opacity-50 cursor-pointer"
           >
             {isSaving ? (

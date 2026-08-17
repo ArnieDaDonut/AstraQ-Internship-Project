@@ -11,6 +11,7 @@ from backend.routes.profile_routes import router as profile_router
 from backend.routes.research_type_routes import router as research_type_router
 from backend.routes.plan_routes import router as plan_router
 from backend.routes.report_routes import router as report_router
+from backend.routes.sync_routes import router as sync_router
 
 # Create all tables on startup
 Base.metadata.create_all(bind=engine)
@@ -39,6 +40,7 @@ app.include_router(profile_router)
 app.include_router(research_type_router)
 app.include_router(plan_router)
 app.include_router(report_router)
+app.include_router(sync_router)
 
 
 @app.get("/api/health")
