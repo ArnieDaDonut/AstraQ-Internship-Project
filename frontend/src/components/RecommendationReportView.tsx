@@ -96,9 +96,9 @@ export default function RecommendationReportView({
   ];
   const conclusionText = report?.conclusion || report?.recommendation || "Based on empirical evidence and strategic modeling, proceeding with a phased execution roadmap presents a highly favorable opportunity with manageable risk factors.";
   const references = report?.references || [
-    "AstraQ Autonomous Intelligence Research Specification v4.2 (2026)",
-    "Global Market Trends in AI Automation & Enterprise Infrastructure (IEEE 2025)",
-    "Zero Trust Security Standards for Cloud Systems (CISA Technical Report)"
+    { title: "AstraQ Autonomous Intelligence Research Specification v4.2", url: "https://example.com/astraq-spec" },
+    { title: "Global Market Trends in AI Automation & Enterprise Infrastructure", url: "https://example.com/ai-trends" },
+    { title: "Zero Trust Security Standards for Cloud Systems", url: "https://example.com/zero-trust" }
   ];
 
   return (
@@ -356,9 +356,18 @@ export default function RecommendationReportView({
             7.0 References & Cited Standards
           </h2>
           <ol className="list-decimal list-inside space-y-1.5 text-[#121212]/60 dark:text-white/60 font-serif italic">
-            {references.map((ref, rIdx) => (
-              <li key={rIdx}>{ref}</li>
-            ))}
+            {references.map((ref: any, rIdx: number) => {
+              if (typeof ref === 'string') {
+                return <li key={rIdx}>{ref}</li>;
+              }
+              return (
+                <li key={rIdx}>
+                  <a href={ref.url} target="_blank" rel="noreferrer" className="hover:underline text-blue-600 dark:text-blue-400">
+                    {ref.title || ref.url}
+                  </a>
+                </li>
+              );
+            })}
           </ol>
         </section>
 

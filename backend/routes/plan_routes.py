@@ -35,7 +35,7 @@ Your output must be structured, logical, and Mutually Exclusive, Collectively Ex
 
 @router.get("/master-prompt", response_model=MasterPromptResponse)
 def get_master_prompt(research_type: str = "Market Research", db: Session = Depends(get_db)):
-    # Try to find a custom prompt for this research type
+    # Try to find a custom prompt for this research type    
     prompt_obj = db.query(Prompt).filter(Prompt.research_type == research_type).first()
     prompt_text = prompt_obj.prompt_text if prompt_obj else DEFAULT_MASTER_PROMPT
 

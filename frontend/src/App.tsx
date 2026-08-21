@@ -356,6 +356,9 @@ export default function App() {
           reasoning: reportData.market_and_technical_analysis || reportData.reasoning || '',
           generated_at: new Date().toISOString()
         };
+      } else {
+        const errText = await res.text();
+        console.error(`Backend report generation failed [HTTP ${res.status}]:`, errText);
       }
     } catch (err) {
       console.warn('Backend report generation call failed, using client synthesis fallback:', err);
