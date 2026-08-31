@@ -76,3 +76,11 @@ docker-compose up --build
 
 
 4. Access the application through localhost!
+
+
+## AI Disclosure
+
+AI was used in this project to:
+- Research how to use Docker
+- Create grounding mechanisms for Gemini
+- Help implement authentication
